@@ -107,6 +107,10 @@ def generate_frames():
 
         return
 
+    frame_skip = 3
+    frame_count = 0
+    last_annotated_frame = None
+
     while True:
 
         success, frame = cap.read()
@@ -114,12 +118,18 @@ def generate_frames():
         if not success:
             break
 
-        annotated_frame = frame
+        # Resize for faster processing
+        frame = cv2.resize(frame, (640, 480))
+        
+        if last_annotated_frame is None:
+            last_annotated_frame = frame
+            
+        frame_count += 1
 
-        if model:
-            results = model(frame, conf=0.9)
+        if model and frame_count % frame_skip == 0:
+            results = model(frame, conf=0.45)
 
-            annotated_frame = results[0].plot()
+            last_annotated_frame = results[0].plot()
             if len(results[0].boxes) > 0:
 
                 valid_detection = False
@@ -185,7 +195,7 @@ def generate_frames():
                     )
 
                     # Save image
-                    cv2.imwrite(image_path, annotated_frame)
+                    cv2.imwrite(image_path, last_annotated_frame)
 
                     print("🖼 Image Saved:", image_filename)
 
@@ -245,7 +255,7 @@ def generate_frames():
                 pothole_cooldown -= 1
 
 
-        ret, buffer = cv2.imencode('.jpg', annotated_frame)
+        ret, buffer = cv2.imencode('.jpg', last_annotated_frame)
 
         frame_bytes = buffer.tobytes()
 
