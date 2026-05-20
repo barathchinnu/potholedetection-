@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Monitor - RoadWatch</title>
+    <!-- Modern Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .ai-main {
+            flex: 1;
+            background: #111;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow-y: auto;
+        }
+        .ai-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 20px;
+        }
+        .ai-header h2 {
+            font-size: 2rem;
+            color: #fff;
+            margin: 0;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+        .ai-header p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+        .video-container {
+            width: 100%;
+            max-width: 1000px;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            position: relative;
+        }
+        .video-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            max-width: 1000px;
+        }
+        .metric-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            padding: 24px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .metric-card i {
+            font-size: 24px;
+            color: var(--accent);
+            margin-bottom: 12px;
+        }
+        .metric-card h3 {
+            font-size: 2rem;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+        .metric-card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <header class="sidebar-header">
+                <div class="logo">
+                    <i class="fa-solid fa-road-circle-exclamation"></i>
+                </div>
+                <h1>RoadWatch System</h1>
+                <span class="status-indicator live"><i class="fa-solid fa-circle"></i> LIVE</span>
+            </header>
+
+            <nav class="nav-menu">
+                <a href="/" class="nav-link"><i class="fa-solid fa-map-location-dot"></i> Live Tracker</a>
+                <a href="/ai-detection" class="nav-link active"><i class="fa-solid fa-microchip"></i> AI Monitor</a>
+                <a href="/analysis" class="nav-link"><i class="fa-solid fa-chart-pie"></i> Data Analytics</a>
+                <a href="/authorities" class="nav-link"><i class="fa-solid fa-database"></i> Database View</a>
+            </nav>
+
+            <section class="logs-section">
+                <div class="logs-header">
+                    <h2>Recent Detections</h2>
+                    <span class="badge" id="detection-count">0</span>
+                </div>
+                <div class="log-list" id="log-list">
+                    <!-- Loaded via JS -->
+                </div>
+            </section>
+        </aside>
+
+        <!-- MAIN AI WINDOW -->
+        <main class="ai-main">
+            <div class="ai-header">
+                <div>
+                    <h2>YOLOv8 Computer Vision</h2>
+                    <p>Real-time edge detection sequence and inference feed</p>
+                </div>
+                <div class="status-indicator live" style="background: rgba(46, 213, 115, 0.2); font-size:1rem; padding: 8px 16px;">
+                    <i class="fa-solid fa-circle"></i> MODEL ACTIVE
+                </div>
+            </div>
+
+            <div class="video-container">
+                <img id="video-stream" src="{{ url_for('video_feed') }}" alt="Live Camera Feed">
+                <div class="scanning-bar"></div>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <i class="fa-solid fa-bolt"></i>
+                    <h3>High</h3>
+                    <p>Inference Speed</p>
+                </div>
+                <div class="metric-card">
+                    <i class="fa-solid fa-bullseye"></i>
+                    <h3>60%</h3>
+                    <p>Conf Threshold</p>
+                </div>
+                <div class="metric-card">
+                    <i class="fa-solid fa-video"></i>
+                    <h3>Active</h3>
+                    <p>Stream Status</p>
+                </div>
+            </div>
+        </main>
+        
+    </div>
+
+    <script>
+        // Simple polling for logs to keep sidebar synced
+        async function fetchDetections() {
+            try {
+                const response = await fetch('/api/detections');
+                const data = await response.json();
+                const logList = document.getElementById('log-list');
+                document.getElementById('detection-count').textContent = data.length;
+                
+                if (data.length === 0) {
+                     logList.innerHTML = `<div class="empty-state"><i class="fa-solid fa-satellite-dish"></i><p>Waiting for detections...</p></div>`;
+                     return;
+                }
+                
+                logList.innerHTML = '';
+                data.forEach(det => {
+                    logList.innerHTML += `
+                        <div class="log-item">
+                            <div class="log-item-header">
+                                <span><i class="fa-solid fa-triangle-exclamation" style="color: var(--accent); margin-right: 6px;"></i> Hole #${det.id}</span>
+                                <span class="log-time">${det.time}</span>
+                            </div>
+                            <div class="log-coords">${det.lat.toFixed(5)}, ${det.lon.toFixed(5)}</div>
+                        </div>
+                    `;
+                });
+            } catch (error) { console.error(error); }
+        }
+        setInterval(fetchDetections, 2000);
+        fetchDetections();
+    </script>
+</body>
+</html>
